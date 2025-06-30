@@ -21,5 +21,6 @@ curl -fsSL https://raw.githubusercontent.com/distillium/motd/main/install-motd.s
 
 - `rw-motd-set` — open a menu to enable/disable MOTD info blocks adn logo
 
+
 The MOTD includes sections for system information, Docker containers and
 now shows UFW status with a list of active rules when available.
