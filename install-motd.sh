@@ -139,6 +139,13 @@ printf "${COLOR_LABEL}%-22s${COLOR_VALUE}%s${RESET}\n" "Kernel:" "$(uname -r)"
     STATUS=$(ufw status | head -1 | awk '{print $2}')
     if [ "$STATUS" = "active" ]; then
       printf "${COLOR_LABEL}%-22s${COLOR_GREEN}%s${RESET}\n" "UFW Status:" "$STATUS"
+      RULES=$(ufw status | tail -n +2)
+      if [ -n "$RULES" ]; then
+        echo -e "${COLOR_LABEL}Rules:${RESET}"
+        echo "$RULES" | while IFS= read -r LINE; do
+          echo -e "  ${COLOR_VALUE}${LINE}${RESET}"
+        done
+      fi
     else
       printf "${COLOR_LABEL}%-22s${COLOR_RED}%s${RESET}\n" "UFW Status:" "$STATUS"
     fi
