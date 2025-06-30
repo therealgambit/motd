@@ -18,6 +18,7 @@ SHOW_MEM=true
 SHOW_NET=true
 SHOW_DOCKER=true
 SHOW_FIREWALL=true
+SHOW_FIREWALL_RULES=false
 EOF
 
 echo "[+] Installing MOTD script..."
@@ -139,6 +140,16 @@ printf "${COLOR_LABEL}%-22s${COLOR_VALUE}%s${RESET}\n" "Kernel:" "$(uname -r)"
     STATUS=$(ufw status | head -1 | awk '{print $2}')
     if [ "$STATUS" = "active" ]; then
       printf "${COLOR_LABEL}%-22s${COLOR_GREEN}%s${RESET}\n" "UFW Status:" "$STATUS"
+      if [ "$SHOW_FIREWALL_RULES" = true ]; then
+        RULES=$(ufw status | tail -n +2)
+        if [ -n "$RULES" ]; then
+          echo -e "${COLOR_LABEL}Rules:${RESET}"
+          echo "$RULES" | while IFS= read -r LINE; do
+            echo -e "  ${COLOR_VALUE}${LINE}${RESET}"
+          done
+        fi
+
+      fi
     else
       printf "${COLOR_LABEL}%-22s${COLOR_RED}%s${RESET}\n" "UFW Status:" "$STATUS"
     fi
@@ -186,10 +197,11 @@ CHOICES=$(whiptail --title "MOTD Settings" --checklist \
 "SHOW_MEM" "Память и диск" $(grep -q 'SHOW_MEM=true' "$CONFIG" && echo ON || echo OFF) \
 "SHOW_NET" "Сетевой трафик" $(grep -q 'SHOW_NET=true' "$CONFIG" && echo ON || echo OFF) \
 "SHOW_FIREWALL" "Статус UFW" $(grep -q 'SHOW_FIREWALL=true' "$CONFIG" && echo ON || echo OFF) \
+"SHOW_FIREWALL_RULES" "Правила UFW" $(grep -q 'SHOW_FIREWALL_RULES=true' "$CONFIG" && echo ON || echo OFF) \
 "SHOW_DOCKER" "Контейнеры Docker" $(grep -q 'SHOW_DOCKER=true' "$CONFIG" && echo ON || echo OFF) \
 3>&1 1>&2 2>&3)
 
-for VAR in SHOW_LOGO SHOW_CPU SHOW_MEM SHOW_NET SHOW_FIREWALL SHOW_DOCKER; do
+for VAR in SHOW_LOGO SHOW_CPU SHOW_MEM SHOW_NET SHOW_FIREWALL SHOW_FIREWALL_RULES SHOW_DOCKER; do
   if echo "$CHOICES" | grep -q "$VAR"; then
     sed -i "s/^$VAR=.*/$VAR=true/" "$CONFIG"
   else
