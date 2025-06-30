@@ -1,16 +1,19 @@
 ![screenshot](screenshot-1.png)
 
+![screenshot](screenshot.png)
+
 ## Installation
-1. Delete the default motd
-```
-sudo rm /etc/update-motd.d/*
-```
-2. Run the motd install script: 
+### Root:
+
 ```
 bash <(curl -fsSL https://raw.githubusercontent.com/distillium/motd/main/install-motd.sh)
 ```
 
-![screenshot](screenshot.png)
+### Sudo:
+
+```
+curl -fsSL https://raw.githubusercontent.com/distillium/motd/main/install-motd.sh | sudo bash
+```
 
 ## Commands
 
