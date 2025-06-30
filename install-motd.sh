@@ -148,6 +148,7 @@ printf "${COLOR_LABEL}%-22s${COLOR_VALUE}%s${RESET}\n" "Kernel:" "$(uname -r)"
             echo -e "  ${COLOR_VALUE}${LINE}${RESET}"
           done
         fi
+
       fi
     else
       printf "${COLOR_LABEL}%-22s${COLOR_RED}%s${RESET}\n" "UFW Status:" "$STATUS"
