@@ -145,16 +145,18 @@ printf "${COLOR_LABEL}%-22s${COLOR_VALUE}%s${RESET}\n" "Kernel:" "$(uname -r)"
         if [ -n "$RULES" ]; then
           echo -e "${COLOR_LABEL}Rules:${RESET}"
           echo "$RULES" | awk '
-            function trim(s){sub(/^\s+|\s+$/,"",s); return s}
+            function trim(s){sub(/^\s+|\s+$/, "", s); return s}
+            function strip_comment(s){sub(/#.*/, "", s); return trim(s)}
             /^(Status|To)/ || /^--/ || /^$/ {next}
-            {match($0,/(ALLOW|DENY|REJECT|LIMIT)/,m); act=m[1];
-             to=trim(substr($0,1,RSTART-1));
-             from=trim(substr($0,RSTART+RLENGTH));
-             key=to"|"act;
+            /^#/ {next}
+            {match($0,/(ALLOW|DENY|REJECT|LIMIT)/, m); act=m[1];
+             to=trim(substr($0, 1, RSTART-1));
+             from=strip_comment(substr($0, RSTART+RLENGTH));
+             key=from"|"act;
              if(!(key in idx)){idx[key]=++count; order[count]=key}
-             if(rules[key]!="") rules[key]=rules[key]", "from; else rules[key]=from}
+             if(ports[key]!="") ports[key]=ports[key]", "to; else ports[key]=to}
             END{for(i=1;i<=count;i++){split(order[i],a,"|");
-                printf "  %s %s from %s\n", a[1], a[2], rules[order[i]]}}' |
+                printf "  %s %s from %s\n", ports[order[i]], a[2], a[1]}}' |
           while IFS= read -r LINE; do
             echo -e "  ${COLOR_VALUE}${LINE}${RESET}"
           done
