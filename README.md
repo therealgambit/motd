@@ -19,4 +19,4 @@ curl -fsSL https://raw.githubusercontent.com/distillium/motd/main/install-motd.s
 
 - `rw-motd` — manually display the current MOTD.
 
-- `rw-motd-set` — open a menu to enable/disable MOTD info blocks.
+- `rw-motd-set` — open a menu to enable/disable MOTD info blocks adn logo
