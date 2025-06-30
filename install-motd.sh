@@ -4,11 +4,26 @@ set -e
 
 echo "[+] Installing dependencies..."
 apt-get update -qq
-apt-get install -y toilet figlet procps lsb-release whiptail > /dev/null
 
-echo "[+] Disabling default MOTD scripts..."
-find /etc/update-motd.d/ -type f -name "[0-9][0-9]-*" ! -name "00-remnawave" -exec chmod -x {} \; > /dev/null 2>&1
+COMMON_DEPS="toilet figlet procps lsb-release whiptail"
+apt-get install -y $COMMON_DEPS > /dev/null
 
+OS_ID=$(lsb_release -is 2>/dev/null | tr '[:upper:]' '[:lower:]' || grep ^ID= /etc/os-release | cut -d= -f2 | tr '[:upper:]' '[:lower:]')
+
+if [ "$OS_ID" = "debian" ]; then
+    echo "    - Detected Debian. Installing Debian-specific dependencies..."
+    DEBIAN_DEPS="bsdutils login"
+    
+    apt-get install -y $DEBIAN_DEPS > /dev/null 2>&1 || true
+elif [ "$OS_ID" = "ubuntu" ]; then
+    echo "    - Detected Ubuntu. Installing Ubuntu-specific dependencies..."
+    UBUNTU_DEPS="bsdutils wtmpdb lastlog2"
+
+    apt-get install -y $UBUNTU_DEPS > /dev/null 2>&1 || true
+else
+    echo "    - Warning: Unknown OS. Attempting to install common packages."
+    apt-get install -y bsdutils login wtmpdb lastlog2 > /dev/null 2>&1 || true
+fi
 echo "[+] Creating MOTD config..."
 CONFIG_FILE="/etc/rw-motd.conf"
 cat <<EOF > "$CONFIG_FILE"
@@ -68,13 +83,26 @@ echo -e "${COLOR_TITLE}• Session Info${RESET}"
 REAL_USER=$(logname 2>/dev/null || who | awk 'NR==1{print $1}')
 printf "${COLOR_LABEL}%-22s${COLOR_YELLOW}%s${RESET}\n" "User:" "$REAL_USER"
 
-if [ -f /var/log/lastlog ]; then
-  LASTLOG_RAW=$(lastlog -u "$REAL_USER" | tail -n 1)
-  LASTLOG_DATE=$(echo "$LASTLOG_RAW" | awk '{printf "%s %s %s %s %s", $4, $5, $6, $7, $9}')
-  LASTLOG_IP=$(echo "$LASTLOG_RAW" | awk '{print $3}')
-  printf "${COLOR_LABEL}%-22s${COLOR_VALUE}%s ${COLOR_YELLOW}from %s${RESET}\n" "Last login:" "$LASTLOG_DATE" "$LASTLOG_IP"
+LASTLOG_DATE="not available"
+LASTLOG_IP=""
+
+if command -v lastlog &>/dev/null; then
+    LASTLOG_RAW=$(lastlog -u "$REAL_USER" | tail -n 1)
+    LASTLOG_DATE=$(echo "$LASTLOG_RAW" | awk '{printf "%s %s %s %s %s", $4, $5, $6, $7, $9}')
+    LASTLOG_IP=$(echo "$LASTLOG_RAW" | awk '{print $3}')
+elif command -v lastlog2 &>/dev/null; then
+    LASTLOG_RAW=$(lastlog2 -u "$REAL_USER" | tail -n 1)
+    # Check if the output is not just a header
+    if echo "$LASTLOG_RAW" | grep -q "$REAL_USER"; then
+        LASTLOG_DATE=$(echo "$LASTLOG_RAW" | awk '{print $(NF-4), $(NF-3), $(NF-2), $NF}')
+        LASTLOG_IP=$(echo "$LASTLOG_RAW" | awk '{print $3}')
+    fi
+fi
+
+if [ "$LASTLOG_DATE" != "not available" ]; then
+    printf "${COLOR_LABEL}%-22s${COLOR_VALUE}%s ${COLOR_YELLOW}from %s${RESET}\n" "Last login:" "$LASTLOG_DATE" "$LASTLOG_IP"
 else
-  echo -e "${COLOR_LABEL}Last login:${RESET} not available"
+    echo -e "${COLOR_LABEL}Last login:${RESET} not available"
 fi
 
 UPTIME_FMT=$(uptime -p | sed 's/up //')
@@ -83,7 +111,35 @@ printf "${COLOR_LABEL}%-22s${COLOR_VALUE}%s${RESET}\n" "Uptime:" "$UPTIME_FMT"
 echo -e "\n${COLOR_TITLE}• System Info${RESET}"
 printf "${COLOR_LABEL}%-22s${COLOR_VALUE}%s${RESET}\n" "Hostname:" "$(hostname)"
 printf "${COLOR_LABEL}%-22s${COLOR_VALUE}%s${RESET}\n" "OS:" "$(lsb_release -ds 2>/dev/null || grep PRETTY_NAME /etc/os-release | cut -d= -f2 | tr -d '\"')"
-printf "${COLOR_LABEL}%-22s${COLOR_YELLOW}%s${RESET}\n" "External IP:" "$(hostname -I | awk '{print $1}')"
+
+ALL_IPS=$(hostname -I)
+IPV4_ADDR=""
+IPV6_ADDR=""
+
+for IP in $ALL_IPS; do
+    if [[ "$IP" != "127.0.0.1" && "$IP" != "::1" ]]; then
+        if [[ "$IP" == *:* ]]; then
+            if [ -z "$IPV6_ADDR" ]; then
+                IPV6_ADDR="$IP"
+            fi
+        elif [[ "$IP" != "10."* && "$IP" != "172.16."* && "$IP" != "172.17."* && "$IP" != "172.18."* && "$IP" != "172.19."* && "$IP" != "172.2"* && "$IP" != "172.30"* && "$IP" != "172.31."* && "$IP" != "192.168."* ]]; then
+            if [ -z "$IPV4_ADDR" ]; then
+                IPV4_ADDR="$IP"
+            fi
+        fi
+    fi
+done
+
+if [ -z "$IPV4_ADDR" ]; then
+    IPV4_ADDR=$(hostname -I | awk '{print $1}')
+fi
+
+printf "${COLOR_LABEL}%-22s${COLOR_YELLOW}%s${RESET}\n" "External IP (v4):" "$IPV4_ADDR"
+
+if [ -n "$IPV6_ADDR" ]; then
+    printf "${COLOR_LABEL}%-22s${COLOR_VALUE}%s${RESET}\n" "External IP (v6):" "$IPV6_ADDR"
+fi
+
 printf "${COLOR_LABEL}%-22s${COLOR_VALUE}%s${RESET}\n" "Kernel:" "$(uname -r)"
 
 [ "$SHOW_CPU" = true ] && {
