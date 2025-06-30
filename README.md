@@ -24,3 +24,5 @@ curl -fsSL https://raw.githubusercontent.com/distillium/motd/main/install-motd.s
 
 The MOTD includes sections for system information, Docker containers and
 now shows UFW status with a list of active rules when available.
+UFW rules are grouped by source and action, combining ports of identical rules
+into a single line for a more compact view.
