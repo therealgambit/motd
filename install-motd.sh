@@ -24,6 +24,11 @@ else
     echo "    - Warning: Unknown OS. Attempting to install common packages."
     apt-get install -y bsdutils login wtmpdb lastlog2 > /dev/null 2>&1 || true
 fi
+
+if dpkg -s landscape-common >/dev/null 2>&1; then
+    DEBIAN_FRONTEND=noninteractive apt remove --purge -y landscape-common >/dev/null 2>&1
+fi
+
 echo "[+] Creating MOTD config..."
 CONFIG_FILE="/etc/rw-motd.conf"
 cat <<EOF > "$CONFIG_FILE"
@@ -38,6 +43,10 @@ EOF
 
 echo "[+] Installing MOTD script..."
 mkdir -p /etc/update-motd.d
+
+echo "[+] Disabling and cleaning default MOTD scripts..."
+find /etc/update-motd.d/ -type f -name "[0-9][0-9]-*" -exec chmod -x {} \; > /dev/null 2>&1
+find /etc/update-motd.d/ -type f -name "[0-9][0-9]-*" -delete > /dev/null 2>&1
 
 cat << 'EOF' > /etc/update-motd.d/00-remnawave
 #!/bin/bash
@@ -73,10 +82,6 @@ bar() {
   toilet -f standard "distillium"
   echo -e "${RESET}"
 }
-
-LAST_LOGIN=$(last -i -w $(whoami) | grep -v "still logged in" | grep -v "0.0.0.0" | grep -v "127.0.0.1" | sed -n 2p)
-LAST_DATE=$(echo "$LAST_LOGIN" | awk '{print $4, $5, $6, $7}')
-LAST_IP=$(echo "$LAST_LOGIN" | awk '{print $3}')
 
 echo -e "${COLOR_TITLE}• Session Info${RESET}"
 
@@ -206,18 +211,17 @@ printf "${COLOR_LABEL}%-22s${COLOR_VALUE}%s${RESET}\n" "Kernel:" "$(uname -r)"
             /^(Status|To)/ || /^--/ || /^$/ {next}
             /^#/ {next}
             {match($0,/(ALLOW|DENY|REJECT|LIMIT)/, m); act=m[1];
-             to=trim(substr($0, 1, RSTART-1));
-             from=strip_comment(substr($0, RSTART+RLENGTH));
-             key=from"|"act;
-             if(!(key in idx)){idx[key]=++count; order[count]=key}
-             if(ports[key]!="") ports[key]=ports[key]", "to; else ports[key]=to}
+            to=trim(substr($0, 1, RSTART-1));
+            from=strip_comment(substr($0, RSTART+RLENGTH));
+            key=from"|"act;
+            if(!(key in idx)){idx[key]=++count; order[count]=key}
+            if(ports[key]!="") ports[key]=ports[key]", "to; else ports[key]=to}
             END{for(i=1;i<=count;i++){split(order[i],a,"|");
-                printf "  %s %s from %s\n", ports[order[i]], a[2], a[1]}}' |
+              printf "   %s %s from %s\n", ports[order[i]], a[2], a[1]}}' |
           while IFS= read -r LINE; do
-            echo -e "  ${COLOR_VALUE}${LINE}${RESET}"
+            echo -e "   ${COLOR_VALUE}${LINE}${RESET}"
           done
         fi
-
       fi
     else
       printf "${COLOR_LABEL}%-22s${COLOR_RED}%s${RESET}\n" "UFW Status:" "$STATUS"
@@ -237,7 +241,7 @@ printf "${COLOR_LABEL}%-22s${COLOR_VALUE}%s${RESET}\n" "Kernel:" "$(uname -r)"
       echo -e "${COLOR_LABEL}Running Containers:${RESET}"
       NAMES=($(docker ps --format '{{.Names}}'))
       for ((i = 0; i < ${#NAMES[@]}; i+=2)); do
-        printf "  ${COLOR_VALUE}%-30s%-30s${RESET}\n" "${NAMES[$i]}" "${NAMES[$((i + 1))]}"
+        printf "   ${COLOR_VALUE}%-30s%-30s${RESET}\n" "${NAMES[$i]}" "${NAMES[$((i + 1))]}"
       done
     fi
   else
@@ -249,10 +253,6 @@ echo
 EOF
 
 chmod +x /etc/update-motd.d/00-remnawave
-
-echo "[+] Setting MOTD symlinks..."
-rm -f /etc/motd
-ln -sf /var/run/motd /etc/motd
 ln -sf /etc/update-motd.d/00-remnawave /usr/local/bin/rw-motd
 
 echo "[+] Creating config menu 'rw-motd-set'..."
@@ -285,10 +285,25 @@ chmod +x /usr/local/bin/rw-motd-set
 
 echo "[+] Configuring PAM and SSH for MOTD..."
 
+rm -f /etc/motd
+ln -sf /run/motd.dynamic /etc/motd >/dev/null 2>&1
+
+if [ -f /etc/default/motd-news ]; then
+    sed -i 's/ENABLED=1/ENABLED=0/' /etc/default/motd-news
+fi
+
+echo "" > /etc/motd
+echo "" > /run/motd.dynamic
+
 for PAM_FILE in /etc/pam.d/sshd /etc/pam.d/login; do
-  sed -i '/pam_motd.so motd=\/run\/motd.dynamic/d' "$PAM_FILE"
-  grep -q "pam_motd.so noupdate" "$PAM_FILE" || \
-    echo "session optional pam_motd.so noupdate" >> "$PAM_FILE"
+    sed -i 's/^\(session.*pam_motd.so.*\)/#\1/' "$PAM_FILE"
+    sed -i 's/^\(session.*pam_lastlog.so.*\)/#\1/' "$PAM_FILE"
+
+    grep -q "pam_motd.so motd=/run/motd.dynamic" "$PAM_FILE" || \
+        echo "session optional pam_motd.so motd=/run/motd.dynamic" >> "$PAM_FILE"
+
+    grep -q "pam_motd.so noupdate" "$PAM_FILE" || \
+        echo "session optional pam_motd.so noupdate" >> "$PAM_FILE"
 done
 
 SSHD_CONFIG="/etc/ssh/sshd_config"
@@ -299,10 +314,6 @@ grep -q "^PrintMotd" "$SSHD_CONFIG" && \
 grep -q "^PrintLastLog" "$SSHD_CONFIG" && \
   sed -i 's/^PrintLastLog.*/PrintLastLog no/' "$SSHD_CONFIG" || \
   echo "PrintLastLog no" >> "$SSHD_CONFIG"
-
-for PAM_FILE in /etc/pam.d/sshd /etc/pam.d/login; do
-  sed -i 's/^\(session.*pam_lastlog.so.*\)/#\1/' "$PAM_FILE"
-done
 
 if systemctl is-active ssh >/dev/null 2>&1; then
   systemctl reload ssh
