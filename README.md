@@ -2,17 +2,10 @@
 
 ![screenshot](screenshot.png)
 
-## Installation
-### Root:
+## Installation (root):
 
 ```
 bash <(curl -fsSL https://raw.githubusercontent.com/distillium/motd/main/install-motd.sh)
-```
-
-### Sudo:
-
-```
-curl -fsSL https://raw.githubusercontent.com/distillium/motd/main/install-motd.sh | sudo bash
 ```
 
 ## Commands
