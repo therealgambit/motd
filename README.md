@@ -1,4 +1,10 @@
-![screenshot](screenshot-1.png)
+<p aling="center"><a href="https://github.com/distillium/motd">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="./media/logo.png" />
+   <source media="(prefers-color-scheme: light)" srcset="./media/logo-black.png" />
+   <img alt="distillium/motd" src="https://github.com/distillium/motd" />
+ </picture>
+</a></p>
 
 ![screenshot](screenshot.png)
 
