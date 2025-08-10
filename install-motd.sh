@@ -362,7 +362,7 @@ validate_system() {
 }
 
 install_dependencies() {
-    log_info "Установка зависимостей..."
+    log_info "Установка зависимостей для ${SYSTEM_TYPE} ${SYSTEM_VERSION}..."
     
     if [[ ! -f "${APT_CONF_FILE}" ]]; then
         echo 'Acquire::ForceIPv4 "true";' > "${APT_CONF_FILE}"
@@ -374,10 +374,33 @@ install_dependencies() {
     fi
     
     local packages=("toilet" "figlet" "procps" "lsb-release" "whiptail" "rsync")
+    
+    case "${SYSTEM_TYPE}" in
+        "debian")
+            if [[ "${SYSTEM_VERSION}" =~ ^[0-9]+$ ]] && [[ "${SYSTEM_VERSION}" -ge 13 ]]; then
+                log_info "Добавляем пакеты для Debian 13+..."
+                packages+=("sqlite3")
+            fi
+            ;;
+        "ubuntu")
+            local ubuntu_major ubuntu_minor
+            ubuntu_major=$(echo "${SYSTEM_VERSION}" | "${CUT}" -d. -f1)
+            ubuntu_minor=$(echo "${SYSTEM_VERSION}" | "${CUT}" -d. -f2)
+            local ubuntu_numeric=$((ubuntu_major * 100 + ubuntu_minor))
+            
+            if [[ "${ubuntu_numeric}" -ge 2404 ]]; then
+                log_info "Добавляем пакеты для Ubuntu 24.04+..."
+                packages+=("sqlite3")
+            fi
+            ;;
+    esac
+    
     if ! "${APT_GET}" install -y "${packages[@]}" > /dev/null; then
         log_error "Не удалось установить необходимые пакеты"
         exit 1
     fi
+    
+    log_info "Зависимости установлены успешно"
 }
 
 create_config() {
