@@ -47,6 +47,55 @@ log_error() {
     echo "[!] Error: $*" >&2
 }
 
+detect_system_version() {
+    SYSTEM_TYPE=""
+    SYSTEM_VERSION=""
+    
+    if [[ -f "/etc/debian_version" ]]; then
+        if [[ -f "/etc/os-release" ]]; then
+            local os_id
+            os_id=$(safe_cmd "${GREP}" "^ID=" /etc/os-release | "${CUT}" -d= -f2 | tr -d '"')
+            
+            case "${os_id}" in
+                "ubuntu")
+                    SYSTEM_TYPE="ubuntu"
+                    SYSTEM_VERSION=$(safe_cmd "${GREP}" "^VERSION_ID=" /etc/os-release | "${CUT}" -d= -f2 | tr -d '"')
+                    ;;
+                "debian")
+                    SYSTEM_TYPE="debian"
+                    SYSTEM_VERSION=$(safe_cmd "${CAT}" /etc/debian_version | "${CUT}" -d. -f1)
+                    ;;
+                *)
+                    if "${GREP}" -qi "ubuntu" /etc/os-release; then
+                        SYSTEM_TYPE="ubuntu"
+                        SYSTEM_VERSION=$(safe_cmd "${GREP}" "^VERSION_ID=" /etc/os-release | "${CUT}" -d= -f2 | tr -d '"')
+                    else
+                        SYSTEM_TYPE="debian"
+                        SYSTEM_VERSION=$(safe_cmd "${CAT}" /etc/debian_version | "${CUT}" -d. -f1)
+                    fi
+                    ;;
+            esac
+        else
+            SYSTEM_TYPE="debian"
+            SYSTEM_VERSION=$(safe_cmd "${CAT}" /etc/debian_version | "${CUT}" -d. -f1)
+        fi
+    else
+        log_error "Неподдерживаемая система - требуется Debian/Ubuntu"
+        exit 1
+    fi
+    
+    log_info "Обнаружена система: ${SYSTEM_TYPE} ${SYSTEM_VERSION}"
+}
+
+safe_cmd() {
+    local cmd_output
+    if cmd_output=$("$@" 2>/dev/null); then
+        printf '%s' "${cmd_output}"
+    else
+        printf 'N/A'
+    fi
+}
+
 check_backup_exists() {
     [[ -f "${INSTALL_MARKER}" ]] && [[ -d "${BACKUP_ROOT}" ]]
 }
