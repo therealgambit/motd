@@ -532,17 +532,41 @@ show_session_info() {
     fi
     printf "${COLOR_LABEL}%-22s${COLOR_YELLOW}%s${RESET}\n" "User:" "${real_user:-Unknown}"
     
-    if [[ -f "/var/log/lastlog" ]] && [[ -x "${LASTLOG}" ]]; then
+    local lastlog_displayed=false
+    
+    if command -v lastlog2 >/dev/null 2>&1; then
+        local lastlog2_output
+        lastlog2_output=$(safe_cmd lastlog2 show -u "${real_user}" 2>/dev/null | "${TAIL}" -n 1)
+        if [[ "${lastlog2_output}" != "N/A" ]] && [[ "${lastlog2_output}" != *"Never logged in"* ]] && [[ -n "${lastlog2_output}" ]]; then
+            printf "${COLOR_LABEL}%-22s${COLOR_VALUE}%s${RESET}\n" "Last login:" "${lastlog2_output}"
+            lastlog_displayed=true
+        fi
+    fi
+    
+    if [[ "${lastlog_displayed}" = false ]] && [[ -f "/var/lib/wtmpdb/wtmp.db" ]] && command -v sqlite3 >/dev/null 2>&1; then
+        local wtmp_query
+        wtmp_query=$(safe_cmd sqlite3 /var/lib/wtmpdb/wtmp.db "SELECT strftime('%Y-%m-%d %H:%M:%S', time, 'unixepoch'), host FROM wtmp WHERE user='${real_user}' AND type=7 ORDER BY time DESC LIMIT 1;" 2>/dev/null)
+        if [[ "${wtmp_query}" != "N/A" ]] && [[ -n "${wtmp_query}" ]]; then
+            local wtmp_time wtmp_host
+            wtmp_time=$(echo "${wtmp_query}" | "${CUT}" -d'|' -f1)
+            wtmp_host=$(echo "${wtmp_query}" | "${CUT}" -d'|' -f2)
+            printf "${COLOR_LABEL}%-22s${COLOR_VALUE}%s ${COLOR_YELLOW}from %s${RESET}\n" "Last login:" "${wtmp_time}" "${wtmp_host:-unknown}"
+            lastlog_displayed=true
+        fi
+    fi
+    
+    if [[ "${lastlog_displayed}" = false ]] && [[ -f "/var/log/lastlog" ]] && [[ -x "${LASTLOG}" ]]; then
         local lastlog_raw lastlog_date lastlog_ip
         lastlog_raw=$(safe_cmd "${LASTLOG}" -u "${real_user}" | "${TAIL}" -n 1)
         if [[ "${lastlog_raw}" != "N/A" ]] && [[ "${lastlog_raw}" != *"Never logged in"* ]]; then
             lastlog_date=$(echo "${lastlog_raw}" | "${AWK}" '{printf "%s %s %s %s %s", $4, $5, $6, $7, $9}')
             lastlog_ip=$(echo "${lastlog_raw}" | "${AWK}" '{print $3}')
             printf "${COLOR_LABEL}%-22s${COLOR_VALUE}%s ${COLOR_YELLOW}from %s${RESET}\n" "Last login:" "${lastlog_date}" "${lastlog_ip}"
-        else
-            echo -e "${COLOR_LABEL}Last login:${RESET} not available"
+            lastlog_displayed=true
         fi
-    else
+    fi
+    
+    if [[ "${lastlog_displayed}" = false ]]; then
         echo -e "${COLOR_LABEL}Last login:${RESET} not available"
     fi
     
