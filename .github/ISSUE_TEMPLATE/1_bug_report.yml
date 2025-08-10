@@ -29,9 +29,8 @@ body:
       label: '📦 Installation Method'
       description: How did you install?
       options:
-        - Panel only
-        - Node only
-        - Panel & Node
+        - root user
+        - other user
     validations:
       required: true
 
