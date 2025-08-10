@@ -478,12 +478,34 @@ EOF
     fi
 }
 
+readonly TOILET="/usr/bin/toilet"
+readonly LAST="/usr/bin/last"
+readonly LASTLOG="/usr/bin/lastlog"
+readonly WHO="/usr/bin/who"
+readonly UPTIME="/usr/bin/uptime"
+readonly HOSTNAME="/bin/hostname"
+readonly LSB_RELEASE="/usr/bin/lsb-release"
+readonly IP="/sbin/ip"
+readonly UNAME="/bin/uname"
+readonly VMSTAT="/usr/bin/vmstat"
+readonly FREE="/usr/bin/free"
+readonly DF="/bin/df"
+readonly CAT="/bin/cat"
+readonly AWK="/usr/bin/awk"
+readonly CUT="/usr/bin/cut"
+readonly HEAD="/usr/bin/head"
+readonly TAIL="/usr/bin/tail"
+readonly GREP="/bin/grep"
+readonly SED="/bin/sed"
+readonly DOCKER="/usr/bin/docker"
+readonly WC="/usr/bin/wc"
+
 create_motd_script() {
     log_info "Установка скрипта MOTD..."
     
     "${MKDIR}" -p /etc/update-motd.d
     
-    cat > "${MOTD_SCRIPT}" << 'MOTD_EOF'
+    cat > "${MOTD_SCRIPT}" << MOTD_EOF
 #!/bin/bash
 
 if [[ -f "/etc/dist-motd.conf" ]]; then
@@ -506,28 +528,6 @@ readonly COLOR_RED="\e[0;31m"
 readonly COLOR_YELLOW="\e[0;33m"
 readonly BOLD="\e[1m"
 readonly RESET="\e[0m"
-
-readonly TOILET="/usr/bin/toilet"
-readonly LAST="/usr/bin/last"
-readonly LASTLOG="/usr/bin/lastlog"
-readonly WHO="/usr/bin/who"
-readonly UPTIME="/usr/bin/uptime"
-readonly HOSTNAME="/bin/hostname"
-readonly LSB_RELEASE="/usr/bin/lsb-release"
-readonly IP="/sbin/ip"
-readonly UNAME="/bin/uname"
-readonly VMSTAT="/usr/bin/vmstat"
-readonly FREE="/usr/bin/free"
-readonly DF="/bin/df"
-readonly CAT="/bin/cat"
-readonly AWK="/usr/bin/awk"
-readonly CUT="/usr/bin/cut"
-readonly HEAD="/usr/bin/head"
-readonly TAIL="/usr/bin/tail"
-readonly GREP="/bin/grep"
-readonly SED="/bin/sed"
-readonly DOCKER="/usr/bin/docker"
-readonly WC="/usr/bin/wc"
 
 bar() {
     local used=$1
