@@ -1312,6 +1312,7 @@ main() {
     log_info "Начинается установка кастомного MOTD с полным бэкапом директорий..."
     
     check_root
+    detect_system_version
     check_existing_installation
     validate_system
     
