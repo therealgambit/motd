@@ -28,7 +28,7 @@
 
 ## Установка/обновление (root):
 ```
-curl -fsSL https://raw.githubusercontent.com/distillium/motd/main/motd-install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/distillium/motd/main/install-motd.sh | bash
 ```
 
 ## Для удаления используйте:
