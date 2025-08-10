@@ -29,9 +29,8 @@ body:
       label: '📦 Метод установки'
       description: Как вы выполнили установку?
       options:
-        - Только панель (Panel only)
-        - Только нода (Node only)
-        - Панель и нода (Panel & Node)
+        - root user
+        - other user
     validations:
       required: true
 
