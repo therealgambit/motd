@@ -6,22 +6,34 @@
  </picture>
 </a></p>
 
+Кастомная система приветственного сообщения для серверов **Debian/Ubuntu** с расширенной информацией о системе и безопасным управлением.
+
+<details>
+<summary>🌌 Предпросмотр MOTD</summary>
+
 ![screenshot](./media/preview.png)
 
-> [!CAUTION]  
-> **THIS SCRIPT COMPLETELY REPLACES THE STANDARD MOTD AND INSTALLS A CUSTOM ONE. IT WILL NOT BE POSSIBLE TO DELETE, REVERT TO THE STANDARD MOTD OR INSTALL ANOTHER CUSTOM MOTD AFTER INSTALLATION**
+</details>
 
-> [!IMPORTANT]  
-> **BY PROCEEDING WITH THE INSTALLATION, YOU ACKNOWLEDGE THAT YOU HAVE READ THE ABOVE WARNING AND AGREE TO THE PROPOSED INSTALLATION METHOD**
+## Возможности
+- Отображение информации о системе
+- Информация о безопасности: статус брандмауэра и доступные обновления пакетов
+- Мониторинг Docker контейнеров
+- Надежная установка с полной системой резервного копирования
+- Простое управление через интерактивное меню `motd-set`
 
-## Installation (root):
+## Резервное копирование и безопасность
+- Автоматический бэкап ключевых конфигурационных директорий и файлов
+- Восстановление системы при удалении MOTD или ошибках установки
 
+## Установка/обновление (root):
 ```
-bash <(curl -fsSL https://raw.githubusercontent.com/distillium/motd/main/install-motd.sh)
+curl -fsSL https://raw.githubusercontent.com/distillium/motd/main/motd-install.sh | bash
 ```
 
-## Commands
+## Для удаления используйте:
+`motd-set` и выберите соответсвующий пункт
 
-- `rw-motd` — manually display the current MOTD.
-
-- `rw-motd-set` — open a menu to enable/disable MOTD info blocks and logo
+## Команды:
+- `motd` — ручной вызов MOTD
+- `motd-set` — открыть интерактивное меню настроек
