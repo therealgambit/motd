@@ -324,10 +324,31 @@ check_existing_installation() {
 }
 
 validate_system() {
-    if [[ ! -f "/etc/debian_version" ]]; then
-        log_error "Скрипт предназначен только для систем Debian/Ubuntu"
-        exit 1
-    fi
+    detect_system_version
+    
+    case "${SYSTEM_TYPE}" in
+        "debian")
+            if [[ "${SYSTEM_VERSION}" =~ ^[0-9]+$ ]] && [[ "${SYSTEM_VERSION}" -lt 11 ]]; then
+                log_error "Требуется Debian 11 или новее. Обнаружен: Debian ${SYSTEM_VERSION}"
+                exit 1
+            fi
+            ;;
+        "ubuntu")
+            local ubuntu_major ubuntu_minor
+            ubuntu_major=$(echo "${SYSTEM_VERSION}" | "${CUT}" -d. -f1)
+            ubuntu_minor=$(echo "${SYSTEM_VERSION}" | "${CUT}" -d. -f2)
+            local ubuntu_numeric=$((ubuntu_major * 100 + ubuntu_minor))
+            
+            if [[ "${ubuntu_numeric}" -lt 2204 ]]; then
+                log_error "Требуется Ubuntu 22.04 или новее. Обнаружен: Ubuntu ${SYSTEM_VERSION}"
+                exit 1
+            fi
+            ;;
+        *)
+            log_error "Неподдерживаемая система. Поддерживаются только Debian 11+ и Ubuntu 22.04+"
+            exit 1
+            ;;
+    esac
     
     local required_commands=("${APT_GET}" "${SED}" "${GREP}" "${CHMOD}" "${TAR}")
     for cmd in "${required_commands[@]}"; do
@@ -336,6 +357,8 @@ validate_system() {
             exit 1
         fi
     done
+    
+    log_info "Система совместима: ${SYSTEM_TYPE} ${SYSTEM_VERSION}"
 }
 
 install_dependencies() {
