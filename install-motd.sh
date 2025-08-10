@@ -379,6 +379,7 @@ readonly TAIL="/usr/bin/tail"
 readonly GREP="/bin/grep"
 readonly SED="/bin/sed"
 readonly DOCKER="/usr/bin/docker"
+readonly WC="/usr/bin/wc"
 
 bar() {
     local used=$1
@@ -665,22 +666,37 @@ show_docker_info() {
     if [[ "${SHOW_DOCKER}" = "true" ]] && [[ -x "${DOCKER}" ]]; then
         echo -e "\n${COLOR_TITLE}• Docker${RESET}"
         
-        local running total
-        running=$(safe_cmd "${DOCKER}" ps -q | /usr/bin/wc -l)
-        total=$(safe_cmd "${DOCKER}" ps -a -q | /usr/bin/wc -l)
+        local running_names_output total_names_output
+        running_names_output=$(safe_cmd "${DOCKER}" ps --format '{{.Names}}' 2>/dev/null)
+        total_names_output=$(safe_cmd "${DOCKER}" ps -a --format '{{.Names}}' 2>/dev/null)
         
-        printf "${COLOR_LABEL}%-22s${COLOR_VALUE}%s${RESET}\n" "Containers:" "${running:-0} / ${total:-0}"
+        local running_count=0 total_count=0
         
-        if [[ "${running}" =~ ^[0-9]+$ ]] && [[ "${running}" -gt 0 ]]; then
+        if [[ "${running_names_output}" != "N/A" ]] && [[ -n "${running_names_output}" ]]; then
+            running_count=$(echo "${running_names_output}" | "${WC}" -l)
+        fi
+        
+        if [[ "${total_names_output}" != "N/A" ]] && [[ -n "${total_names_output}" ]]; then
+            total_count=$(echo "${total_names_output}" | "${WC}" -l)
+        fi
+        
+        printf "${COLOR_LABEL}%-22s${COLOR_VALUE}%s${RESET}\n" "Containers:" "${running_count} / ${total_count}"
+        
+        if [[ "${running_count}" -gt 0 ]] && [[ "${running_names_output}" != "N/A" ]]; then
             echo -e "${COLOR_LABEL}Running Containers:${RESET}"
-            local names_output
-            if names_output=$(safe_cmd "${DOCKER}" ps --format '{{.Names}}' 2>/dev/null); then
-                local names_array
-                mapfile -t names_array <<< "${names_output}"
-                for ((i = 0; i < ${#names_array[@]}; i+=2)); do
-                    printf "  ${COLOR_VALUE}%-30s%-30s${RESET}\n" "${names_array[$i]:-}" "${names_array[$((i + 1))]:-}"
-                done
-            fi
+            
+            local names_array=()
+            while IFS= read -r line; do
+                [[ -n "$line" ]] && names_array+=("$line")
+            done <<< "${running_names_output}"
+            
+            for ((i = 0; i < ${#names_array[@]}; i+=2)); do
+                if [[ $((i + 1)) -lt ${#names_array[@]} ]]; then
+                    printf "  ${COLOR_VALUE}%-30s%-30s${RESET}\n" "${names_array[$i]}" "${names_array[$((i + 1))]}"
+                else
+                    printf "  ${COLOR_VALUE}%-30s${RESET}\n" "${names_array[$i]}"
+                fi
+            done
         fi
     elif [[ "${SHOW_DOCKER}" = "true" ]]; then
         echo -e "\n${COLOR_TITLE}• Docker${RESET}"
