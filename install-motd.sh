@@ -230,7 +230,19 @@ complete_cleanup() {
 }
 
 force_regenerate_standard_motd() {
-    log_info "Принудительная регенерация стандартного MOTD..."
+    log_info "Принудительная регенерация стандартного MOTD для ${SYSTEM_TYPE} ${SYSTEM_VERSION}..."
+    
+    local cache_files=(
+        "/var/run/motd"
+        "/var/run/motd.dynamic"
+        "/run/motd"
+        "/run/motd.dynamic"
+        "/var/lib/update-notifier/updates-available"
+    )
+    
+    for cache_file in "${cache_files[@]}"; do
+        "${RM}" -f "${cache_file}" 2>/dev/null || true
+    done
     
     if command -v apt >/dev/null 2>&1; then
         apt list --upgradable > /dev/null 2>&1 || true
@@ -241,6 +253,32 @@ force_regenerate_standard_motd() {
     fi
     
     if [[ -d "/etc/update-motd.d" ]]; then
+        case "${SYSTEM_TYPE}" in
+            "ubuntu")
+                local ubuntu_major ubuntu_minor
+                ubuntu_major=$(echo "${SYSTEM_VERSION}" | "${CUT}" -d. -f1)
+                ubuntu_minor=$(echo "${SYSTEM_VERSION}" | "${CUT}" -d. -f2)
+                local ubuntu_numeric=$((ubuntu_major * 100 + ubuntu_minor))
+                
+                if [[ "${ubuntu_numeric}" -ge 2404 ]]; then
+                    "${CHMOD}" 755 /etc/update-motd.d/* 2>/dev/null || true
+                    "${CHMOD}" 644 /etc/update-motd.d/00-header 2>/dev/null || true
+                    "${CHMOD}" 644 /etc/update-motd.d/10-help-text 2>/dev/null || true
+                else
+                    "${CHMOD}" +x /etc/update-motd.d/* 2>/dev/null || true
+                fi
+                ;;
+            "debian")
+                if [[ "${SYSTEM_VERSION}" =~ ^[0-9]+$ ]] && [[ "${SYSTEM_VERSION}" -ge 13 ]]; then
+                    "${CHMOD}" 755 /etc/update-motd.d/* 2>/dev/null || true
+                else
+                    "${CHMOD}" +x /etc/update-motd.d/* 2>/dev/null || true
+                fi
+                ;;
+        esac
+        
+        "${CHMOD}" -x /etc/update-motd.d/00-dist-motd 2>/dev/null || true
+        
         if command -v run-parts >/dev/null 2>&1; then
             local temp_motd=$(mktemp)
             run-parts --lsbsysinit /etc/update-motd.d/ > "${temp_motd}" 2>/dev/null || true
@@ -254,6 +292,21 @@ force_regenerate_standard_motd() {
             "${RM}" -f "${temp_motd}"
         fi
     fi
+    
+    case "${SYSTEM_TYPE}" in
+        "ubuntu")
+            local ubuntu_major ubuntu_minor
+            ubuntu_major=$(echo "${SYSTEM_VERSION}" | "${CUT}" -d. -f1)
+            ubuntu_minor=$(echo "${SYSTEM_VERSION}" | "${CUT}" -d. -f2)
+            local ubuntu_numeric=$((ubuntu_major * 100 + ubuntu_minor))
+            
+            if [[ "${ubuntu_numeric}" -ge 2404 ]]; then
+                if [[ -f "/etc/motd" ]]; then
+                    "${CHMOD}" 644 "/etc/motd" 2>/dev/null || true
+                fi
+            fi
+            ;;
+    esac
     
     if "${SYSTEMCTL}" list-unit-files | grep -q "motd-news"; then
         "${SYSTEMCTL}" restart motd-news.timer 2>/dev/null || true
